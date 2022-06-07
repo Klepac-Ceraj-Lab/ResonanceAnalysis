@@ -32,7 +32,7 @@ function findprevstool(timepoints, has_stool; rev=false)
     return (timepoints .> fs) .& has_stool
 end
 
-countmap(v) = Dict(k=> count(x -> x === k, v) for k in unique(v))
+countmap(v) = Dict(k=> count(x -> !ismissing(x) && x == k, v) for k in unique(v))
 
 ## Breastfeeding
 

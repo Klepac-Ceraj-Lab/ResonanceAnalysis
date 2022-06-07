@@ -1,9 +1,8 @@
-function write_gfs_arrow()
+function write_gfs_arrow(dir=ENV["ANALYSIS_FILES"])
     allfiles = String[]
 
     @info "getting files"
-    for (root, dirs, files) in walkdir("/grace/echo/analysis/biobakery3/")
-        contains(root, "batch") || continue
+    for (root, dirs, files) in walkdir(dir)
         filter!(f-> contains(f, "genefamilies") && !contains(f, "relab") && !contains(f, "zymo") && !contains(f, r"^FE\d+"), files)
         append!(allfiles, joinpath.(Ref(root), files))
     end

@@ -1,7 +1,7 @@
 using Resonance
 
 profiles = String[]
-for (root, dirs, files) in walkdir("/grace/echo/analysis/biobakery3/")
+for (root, dirs, files) in walkdir("/grace/sequencing/processed/mgx")
     contains(root, "metaphlan") || continue
     contains(root, "links") && continue
     filter!(f-> contains(f, r"^FG.+profile"), files)

@@ -32,7 +32,7 @@ unique!(samplemeta)
 # then normalize certain columns.
 # First, subject-specific data
 
-fmp_subject = DataFrame(XLSX.readtable("data/resonance_fmp/Subject_Centric_040122.xlsx", "Sheet1", infer_eltypes=true)...)
+fmp_subject = DataFrame(XLSX.readtable("data/resonance_fmp/Subject_Centric_060222.xlsx", "Sheet1", infer_eltypes=true)...)
 rename!(fmp_subject, Dict(:studyID=>:subject))
 @rsubset! fmp_subject :subject in samplemeta.subject
 
@@ -89,17 +89,21 @@ sort!(fmp_alltp, [:subject, :timepoint])
 # We want to plot set intersections for having various kinds of data.
 # In some cases, additional wrangling is necessary
 
-fmp_alltp.simple_race = map(fmp_alltp.simple_race) do r
+
+
+fmp_alltp.race = map(fmp_alltp."Merge_Dem_Child_Race") do r
     ismissing(r) && return missing
     r == "Unknown" && return missing
     r == "Decline to Answer" && return missing
+    contains(r, "\n") && return "Mixed"
     r ∈ ("Mixed", "Mixed Race") && return "Mixed"
+    r ∈ ("Other Asian", "Asian ") && return "Asian"
     return r
 end
 
 # unique!(fmp_alltp, [:subject, :timepoint])
 
-fmp_alltp.has_race = .!ismissing.(fmp_alltp."simple_race")
+fmp_alltp.has_race = .!ismissing.(fmp_alltp."race")
 
 ##
 

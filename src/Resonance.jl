@@ -24,13 +24,13 @@ using MultivariateStats
 using Dictionaries
 using CodecZlib
 using Statistics
-using Term
-using Term.progress
 using Arrow
 using Tables
 using SparseArrays
 using CodecZlib
 using FilePaths
+using ProgressLogging
+using CategoricalArrays
 
 @reexport using BiobakeryUtils
 @reexport using DataFrames

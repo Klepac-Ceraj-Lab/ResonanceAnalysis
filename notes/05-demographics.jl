@@ -4,19 +4,7 @@ omni, tps = startup(; dfs = [:omni, :tps])
 using CairoMakie
 using AlgebraOfGraphics
 
-rce = (@chain tps begin
-    groupby(:subject)
-    combine(:simple_race => (r-> coalesce(r...)) => :race)
-end).race
-
-
 hist(collect(skipmissing(tps.ageMonths)))
-
-hhs = (@chain tps begin
-    groupby(:subject)
-    combine(:mother_HHS_Education => (r-> coalesce(r...)) => :hhs)
-end).hhs
-
 
 ##
 
@@ -30,12 +18,12 @@ labels = [
 ]
 
 counts = [
-    1142,
-    290,
-    1,
-    343,
-    30,
-    594
+    "White"   =>   1142,
+    "Black"   =>   290,
+    "Asian"   =>   1,
+    "Mixed"   =>   343,
+    "Other"   =>   30,
+    "Unknown" =>   594
 ]
 
 colors = [
@@ -57,33 +45,23 @@ Legend(fig[2,1], [MarkerElement(color=c, marker=:circle) for c in colors],
         tellheight=true, tellwidth=false, nbanks=3
 )
 
-save("figures/demo_race.png", fig)
+# save("figures/demo_race.png", fig)
 fig
 ##
 
-using CategoricalArrays
 
-ed = skipmissing(unique(tps, [:subject, :mother_HHS_Education]).mother_HHS_Education) |> collect
-filter!(!=(-8), ed)
-ed = categorical(sort(ed); ordered=true)
-ed = recode(ed, 
-     2 => "Junior high school",
-     3 => "Some high school",
-     4 => "High school grad",
-     5 => "Some college",
-     6 => "College grad",
-     7 => "Grad/professional school")
+ed = skipmissing(unique(tps, [:subject]).ed) |> collect
 
 fig, ax, p = pie(map(levels(ed)) do lev
         count(==(lev), ed)
     end;
-    color = Makie.to_colormap(:viridis, 6), axis=(;aspect=1)
+    color = Makie.resample_cmap(:viridis, 6), axis=(;aspect=1)
 )
 hidedecorations!(ax)
 hidespines!(ax)
 
 Legend(fig[2,1],
-    [MarkerElement(color=c, marker=:circle) for c in Makie.to_colormap(:viridis, 6)],
+    [MarkerElement(color=c, marker=:circle) for c in Makie.resample_cmap(:viridis, 6)],
     levels(ed),
     "Maternal Education";
     orientation=:horizontal,
@@ -92,6 +70,34 @@ Legend(fig[2,1],
 
 save("figures/demo_education.png", fig)
 fig
+
+
+##
+
+
+rce = skipmissing(unique(tps, [:subject]).rce) |> collect
+
+fig, ax, p = pie(map(levels(rce)) do lev
+        count(==(lev), skipmissing(rce))
+    end;
+    color = [:navajowhite3,:coral,:darkorange3,:darkseagreen3,:cyan4,:dimgray],
+    axis  =(; aspect=1)
+)
+
+hidedecorations!(ax)
+hidespines!(ax)
+
+Legend(fig[2,1],
+    [MarkerElement(color=c, marker=:circle) for c in  [:navajowhite3,:coral,:darkorange3,:darkseagreen3,:cyan4,:dimgray]],
+    levels(rce),
+    "Race";
+    orientation=:horizontal,
+    tellheight=true, tellwidth=false, nbanks=3
+)
+
+save("figures/demo_race.png", fig)
+fig
+
 
 ##
 

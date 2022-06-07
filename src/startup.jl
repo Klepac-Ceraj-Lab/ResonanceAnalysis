@@ -5,12 +5,16 @@ const mainmeta = [
         "age6to12mo",
         "age12moplus",
         "mother_HHS_Education",
-        "simple_race",
+        "race",
+        "childGender",
         "cogScore",
         "has_segmentation",
         "ECHOTPCoded",
-        "assessmentDate"
+        "assessmentDate",
+        "ed",
+        "rce"
     ]
+
     
 const brainmeta = [
             #  "CortexVol",
@@ -79,6 +83,29 @@ end
 
 function _gentps()
     tps  = CSV.read(joinpath(@__DIR__, "..", "data/wrangled/timepoints.csv"), DataFrame)
+
+    DataFrames.transform!(groupby(tps, :subject), :mother_HHS_Education => (r->coalesce(r...)) => :hhs)
+    tps.ed = categorical(tps.hhs; levels=[-8 , 2:7...], ordered=true)
+    tps.ed = recode(tps.ed,
+        -8 => missing,
+        2 => "Junior high school",
+        3 => "Some high school",
+        4 => "High school grad",
+        5 => "Some college",
+        6 => "College grad",
+        7 => "Grad/professional school")
+
+    DataFrames.transform!(groupby(tps, :subject), :race => (r->coalesce(r...)) => :race)
+    tps.rce = categorical(tps.race; ordered=true)
+    tps.rce = recode(tps.rce, 
+        "American Indian or Alaska Native"=> "Other",
+        "Some other race"                 => "Other",
+        "Asian Indian"                    => "Asian",
+        "Black or African American"       => "Black",
+        missing                           => "Unknown"
+    )
+    levels!(tps.rce, ["White","Black","Asian","Mixed","Other","Unknown"])
+
     tps."Left-Thalamus" = map(eachrow(tps)) do row
         (t, p) = (row."Left-Thalamus", row."Left-Thalamus-Proper")
         all(ismissing, (t,p)) && return missing
@@ -94,6 +121,8 @@ function _gentps()
     for m in brainmeta
         tps[!, m] .= tps[!, m] ./ map(x-> ismissing(x) || x == 0 ? missing : x, tps."EstimatedTotalIntraCranialVol")
     end
+
+
     
     select!(tps, ["subject", "timepoint", mainmeta..., brainmeta...])
     rename!(tps, Dict(k=> replace(k, "-"=>"_") for k in brainmeta))
