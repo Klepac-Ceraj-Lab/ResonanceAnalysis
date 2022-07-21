@@ -67,17 +67,17 @@ generated in notebooks 1-3:
 - "\$DATA_FILES/wrangled/metabolites.csv"
 - "\$DATA_FILES/wrangled/species.csv"
 """
-function startup(; dfs=[:omni, :etoh, :tps, :complete_brain, :metabolites, :species])
+function startup(; dfs=[:omni, :etoh, :tps, :metabolites, :species])
     omni = CSV.read(datafiles("wrangled", "omnisamples.csv"), DataFrame)
     etoh = CSV.read(datafiles("wrangled", "etohsamples.csv"), DataFrame)
     
-    tps, complete_brain = _gentps()
+    tps = _gentps()
     
     metabolites = _genmetabolites(etoh, tps)
     
    species = _genspecies(omni, tps)
 
-   return (; omni, etoh, tps, complete_brain, metabolites, species)[dfs]
+   return (; omni, etoh, tps, metabolites, species)[dfs]
 end
 
 function _gentps()
@@ -143,11 +143,8 @@ function _gentps()
 
     
     select!(tps, ["subject", "timepoint", mainmeta..., brainmeta...])
-    rename!(tps, Dict(k=> replace(k, "-"=>"_") for k in brainmeta))
-    brainmeta = map(i-> replace(brainmeta[i], "-"=>"_"), eachindex(brainmeta))
     
-    complete_brain = completecases(tps[:, brainmeta])
-    return tps, complete_brain
+    return tps
 end
 
 function _genmetabolites(etoh_samples, tps)

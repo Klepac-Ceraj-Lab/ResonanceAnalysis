@@ -10,7 +10,7 @@ using MixedModels
 using MultipleTesting
 using AlgebraOfGraphics
 
-omni, etoh, tps, complete_brain, metabolites, species = startup()
+omni, etoh, tps, metabolites, species = startup()
 genes = Resonance.read_gfs_arrow()
 ecs = Resonance.read_gfs_arrow(kind="ecs_rename")
 ecs = filter(!hastaxon, ecs)
@@ -46,6 +46,8 @@ kids_pcoa = pcoa(kidsspecies)
 
 using Microbiome.Distances
 using MultivariateStats
+
+complete_brain = map(!ismissing, tps."Left-Thalamus")
 
 brain_dm = pairwise(Euclidean(), Matrix(tps[complete_brain, replace.(Resonance.brainmeta, "-"=>"_")]), dims=1)
 brain_pcoa = fit(MDS, brain_dm, distances=true)

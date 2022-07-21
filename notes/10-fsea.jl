@@ -13,7 +13,7 @@ using DataFrames.InvertedIndices
 using DataFrames.PrettyTables
 using ThreadsX
 
-omni, etoh, tps, complete_brain, metabolites, species = startup()
+omni, etoh, tps, metabolites, species = startup()
 genes = Resonance.read_gfs_arrow()
 unique!(tps, ["subject", "timepoint"])
 
