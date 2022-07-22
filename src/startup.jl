@@ -142,7 +142,7 @@ function _gentps()
 
 
     
-    select!(tps, ["subject", "timepoint", mainmeta..., brainmeta...])
+    select!(tps, ["subject", "timepoint", mainmeta..., brainmeta..., "EstimatedTotalIntraCranialVol"])
     
     return tps
 end

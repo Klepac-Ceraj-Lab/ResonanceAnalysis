@@ -141,14 +141,13 @@ CSV.write(datafiles("fsea_o12.csv"))
 
 #-
 
-brain_features = Symbol.(replace.(Resonance.brainmeta, "-"=>"_"))
-brgenes = genes[:, .!ismissing.(get(genes, :Left_Thalamus))]
+brgenes = genes[:, .!ismissing.(get(genes, Symbol("Left-Thalamus")))]
 
 brfsea = DataFrame()
 
-for region in brain_features
+for region in Resonance.brainmeta
     @warn region
-    cscor = cor(abundances(brgenes), get(brgenes, region), dims=2)
+    cscor = cor(abundances(brgenes), get(brgenes, Symbol(region)), dims=2)
 
     fsdf = DataFrame(
         map(collect(keys(neuroactive))) do gs
