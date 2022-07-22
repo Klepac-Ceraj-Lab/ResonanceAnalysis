@@ -18,38 +18,26 @@ rawDf = CSV.read(
     skipto=2
 )
 
+nonuniqueDf = rawDf[nonunique(rawDf[:,1:3]), :]
+unique(nonuniqueDf[:,1:2])
+
 # ## Removing duplicates
 
-# ### Removing actual duplicates
-let
-    n_unique_rows = size(unique(rawDf[:, 1:3]),1)
+# ### Removing actual duplicated lines
 
-    if (n_unique_rows != size(rawDf, 1))
+check_longdata_metaduplicates!(rawDf; remove_duplicates=true)
 
-        n_nonunique = size(rawDf, 1) - n_unique_rows
+# ### Removing technical/biological replicates
 
-        @warn "Long Dataframe contains non-unique rows! **Removing duplicated data**"
-        @warn "After removal, $(n_unique_rows) will remain. $(n_nonunique) rows were rmoved from the original $(size(rawDf, 1))"
-
-    end
-
-end
-
-rawDf = unique!(rawDf)
-
-# ### Removing biological replicates with same metadata
-
-# replicate_lines = [141436, 141445]
-# delete!(rawDf, replicate_lines)
-
-# ## Unstacking dataFrame
-
-retainfirst = true
+retainfirst = true # if true, retain the first technical/biological replicate; if false, retain the last technical/biological replicate
 
 if retainfirst
 
-    cgl = combine(groupby(rawDf,[:subject,:timepoint, :variable]),:value=>first)
-    unstackedDf = unstack(cgl, :variable, :value_first)
+    unstackedDf = @chain rawDf begin
+        groupby( [:subject, :timepoint, :variable] )
+        combine(:value=>first)
+        unstack(:variable, :value_first)
+    end
 
 else
     
@@ -66,7 +54,7 @@ colnames = names(unstackedDf)
 # #### All samples and subjects
 g00_df = copy(unstackedDf)
 println("Beginning data description:\n")
-println("$(size(g00_df, 1)) unique samples from $(length(unique(g00_df.subject))) unique subjects.\n")
+println("$(nrow(g00_df)) unique samples from $(length(unique(g00_df.subject))) unique subjects.\n")
 
 # #### Child samples and subjects
 g00C_df = g00_df[.!(ismissing.(g00_df.ageMonths)), :]
@@ -101,7 +89,6 @@ println("Of all $(length(unique(g00_df.subject))) unique subjects:
     $(n_subjects_childonly) have only Child samples;
     $(n_subjects_motherchild) have both mother and child samples.\n")
 
-
 g00C_Scb_df = g00C_df[.!(ismissing.(g00C_df.Absiella_dolichum)),:]
 g00C_sCb_df = g00C_df[.!(ismissing.(g00C_df.cogScore)),:]
 g00C_scB_df = g00C_df[.!(ismissing.(g00C_df.Left_Thalamus)),:]
@@ -123,7 +110,7 @@ println("Breakdown of children samples:
 # #### Group 01: Child samples for which we have stool sample but **not** brain or cogscore
 
 g01_df = copy(unstackedDf)
-g01_df = g01_df[.!(ismissing.(g01_df.ageMonths)), :]
+#g01_df = g01_df[.!(ismissing.(g01_df.ageMonths)), :]
 g01_df = g01_df[.!(ismissing.(g01_df.Absiella_dolichum)), :]
 g01_df = g01_df[ismissing.(g01_df.cogScore), :]
 g01_df = g01_df[ismissing.(g01_df.Left_Thalamus), :]
@@ -134,7 +121,7 @@ println("Group 01: Child samples for which we have stool sample but **not** brai
 # #### Group 02: Child samples for which we have cogScores but **not** brain or stool
 
 g02_df = copy(unstackedDf)
-g02_df = g02_df[.!(ismissing.(g02_df.ageMonths)), :]
+#g02_df = g02_df[.!(ismissing.(g02_df.ageMonths)), :]
 g02_df = g02_df[ismissing.(g02_df.Absiella_dolichum), :]
 g02_df = g02_df[.!(ismissing.(g02_df.cogScore)), :]
 g02_df = g02_df[ismissing.(g02_df.Left_Thalamus), :]
@@ -145,7 +132,7 @@ println("Group 02: Child samples for which we have cogScores but **not** brain o
 # #### Group 03: Child samples for which we have brain scans but **not** stool or cogscore
 
 g03_df = copy(unstackedDf)
-g03_df = g03_df[.!(ismissing.(g03_df.ageMonths)), :]
+#g03_df = g03_df[.!(ismissing.(g03_df.ageMonths)), :]
 g03_df = g03_df[ismissing.(g03_df.Absiella_dolichum), :]
 g03_df = g03_df[ismissing.(g03_df.cogScore), :]
 g03_df = g03_df[.!(ismissing.(g03_df.Left_Thalamus)), :]
@@ -156,7 +143,7 @@ println("Group 03: Child samples for which we have brain scans but **not** stool
 # #### Group 04: Child samples for which we have concurrent stool + cogScore but **not** brain
 
 g04_df = copy(unstackedDf)
-g04_df = g04_df[.!(ismissing.(g04_df.ageMonths)), :]
+#g04_df = g04_df[.!(ismissing.(g04_df.ageMonths)), :]
 g04_df = g04_df[.!(ismissing.(g04_df.Absiella_dolichum)), :]
 g04_df = g04_df[.!(ismissing.(g04_df.cogScore)), :]
 g04_df = g04_df[ismissing.(g04_df.Left_Thalamus), :]
@@ -167,7 +154,7 @@ println("Group 04: Child samples for which we have concurrent stool + cogScore b
 # #### Group 05: Child samples for which we have concurrent stool + brain but **not** cogscore
 
 g05_df = copy(unstackedDf)
-g05_df = g05_df[.!(ismissing.(g05_df.ageMonths)), :]
+#g05_df = g05_df[.!(ismissing.(g05_df.ageMonths)), :]
 g05_df = g05_df[.!(ismissing.(g05_df.Absiella_dolichum)), :]
 g05_df = g05_df[ismissing.(g05_df.cogScore), :]
 g05_df = g05_df[.!(ismissing.(g05_df.Left_Thalamus)), :]
@@ -178,7 +165,7 @@ println("Group 05: Child samples for which we have concurrent stool + brain but 
 # #### Group 06: Child samples for which we have concurrent cogScore + brain but **not** stool
 
 g06_df = copy(unstackedDf)
-g06_df = g06_df[.!(ismissing.(g06_df.ageMonths)), :]
+#g06_df = g06_df[.!(ismissing.(g06_df.ageMonths)), :]
 g06_df = g06_df[ismissing.(g06_df.Absiella_dolichum), :]
 g06_df = g06_df[.!(ismissing.(g06_df.cogScore)), :]
 g06_df = g06_df[.!(ismissing.(g06_df.Left_Thalamus)), :]
@@ -189,7 +176,7 @@ println("Group 06: Child samples for which we have concurrent cogScore + brain b
 # #### Group 7: Child samples for which we have concrrent stool + cogScore + brain
 
 g07_df = copy(unstackedDf)
-g07_df = g07_df[.!(ismissing.(g07_df.ageMonths)), :]
+#g07_df = g07_df[.!(ismissing.(g07_df.ageMonths)), :]
 g07_df = g07_df[.!(ismissing.(g07_df.Absiella_dolichum)), :]
 g07_df = g07_df[.!(ismissing.(g07_df.cogScore)), :]
 g07_df = g07_df[.!(ismissing.(g07_df.Left_Thalamus)), :]
