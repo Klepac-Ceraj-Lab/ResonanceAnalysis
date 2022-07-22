@@ -22,7 +22,9 @@ export datafiles,
        stp_overlap,
        comm_overlap,
        startup,
-       build_future_df
+       build_future_df,
+       check_longdata_metaduplicates!,
+       microbiome_predictors
 
 using Reexport
 using Airtable
