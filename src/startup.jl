@@ -22,9 +22,9 @@ const brainmeta = [
             #  "TotalGrayVol",
             #  "BrainSegVol-to-eTIV",
             #  "CerebralWhiteMatterVol",
-            #  "lhCorticalWhiteMatterVol",
+                "lhCorticalWhiteMatterVol",
             #  "lhCerebralWhiteMatterVol",
-            #  "lhCortexVol",
+                "lhCortexVol",
                 "Left-Thalamus",
                 "Left-Lateral-Ventricle",
                 "Left-Cerebellum-White-Matter",
@@ -37,9 +37,9 @@ const brainmeta = [
                 "Left-Accumbens-area",
                 "Left-VentralDC",
                 "Left-choroid-plexus",
-            #  "rhCorticalWhiteMatterVol",
+                "rhCorticalWhiteMatterVol",
             #  "rhCerebralWhiteMatterVol",
-            #  "rhCortexVol",
+                "rhCortexVol",
                 "Right-Thalamus",
                 "Right-Lateral-Ventricle",
                 "Right-Cerebellum-White-Matter",
@@ -67,17 +67,17 @@ generated in notebooks 1-3:
 - "\$DATA_FILES/wrangled/metabolites.csv"
 - "\$DATA_FILES/wrangled/species.csv"
 """
-function startup(; dfs=[:omni, :etoh, :tps, :complete_brain, :metabolites, :species])
+function startup(; dfs=[:omni, :etoh, :tps, :metabolites, :species])
     omni = CSV.read(datafiles("wrangled", "omnisamples.csv"), DataFrame)
     etoh = CSV.read(datafiles("wrangled", "etohsamples.csv"), DataFrame)
     
-    tps, complete_brain = _gentps()
+    tps = _gentps()
     
     metabolites = _genmetabolites(etoh, tps)
     
    species = _genspecies(omni, tps)
 
-   return (; omni, etoh, tps, complete_brain, metabolites, species)[dfs]
+   return (; omni, etoh, tps, metabolites, species)[dfs]
 end
 
 function _gentps()
@@ -116,6 +116,25 @@ function _gentps()
         all(ismissing, (t,p)) && return missing
         return max(coalesce(t, 0), coalesce(p, 0))
     end
+
+    tps."lhCorticalWhiteMatterVol" = map(eachrow(tps)) do row
+        (t, p) = (row."lhCorticalWhiteMatterVol", row."lhCerebralWhiteMatterVol")
+        all(ismissing, (t,p)) && return missing
+        return max(coalesce(t, 0), coalesce(p, 0))
+    end
+    
+    tps."rhCorticalWhiteMatterVol" = map(eachrow(tps)) do row
+        (t, p) = (row."rhCorticalWhiteMatterVol", row."rhCerebralWhiteMatterVol")
+        all(ismissing, (t,p)) && return missing
+        return max(coalesce(t, 0), coalesce(p, 0))
+    end
+
+    tps."CorticalWhiteMatterVol" = map(eachrow(tps)) do row
+        (t, p) = (row."CorticalWhiteMatterVol", row."CerebralWhiteMatterVol")
+        all(ismissing, (t,p)) && return missing
+        return max(coalesce(t, 0), coalesce(p, 0))
+    end
+
     brainmeta = Resonance.brainmeta
     for m in brainmeta
         tps[!, m] .= tps[!, m] ./ map(x-> ismissing(x) || x == 0 ? missing : x, tps."EstimatedTotalIntraCranialVol")
@@ -123,12 +142,9 @@ function _gentps()
 
 
     
-    select!(tps, ["subject", "timepoint", mainmeta..., brainmeta...])
-    rename!(tps, Dict(k=> replace(k, "-"=>"_") for k in brainmeta))
-    brainmeta = map(i-> replace(brainmeta[i], "-"=>"_"), eachindex(brainmeta))
+    select!(tps, ["subject", "timepoint", mainmeta..., brainmeta..., "EstimatedTotalIntraCranialVol"])
     
-    complete_brain = completecases(tps[:, brainmeta])
-    return tps, complete_brain
+    return tps
 end
 
 function _genmetabolites(etoh_samples, tps)

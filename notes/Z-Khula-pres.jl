@@ -1,5 +1,5 @@
 using Resonance
-omni, etoh, tps, complete_brain, metabolites, species = startup()
+omni, etoh, tps, metabolites, species = startup()
 genes = Resonance.read_gfs_arrow()
 
 specu1 = species[:, [!ismissing(a) && 2 < a < 10 for a in get(species, :ageMonths)]]

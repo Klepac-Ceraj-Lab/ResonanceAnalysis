@@ -1,7 +1,7 @@
 # Vanja + Aditi CBCL
 
 using Resonance
-omni, etoh, tps, complete_brain, metabolites, species = startup()
+omni, etoh, tps, metabolites, species = startup()
 genes = Resonance.read_gfs_arrow()
 
 aditi_sids = readlines(datafiles("aditi_samples.txt"))
@@ -95,7 +95,7 @@ CSV.write("/home/kevin/Desktop/RESONANCE_bp.csv", sort(df, ["subject", "timepoin
 ## Kirsty + 3rd quarter
 
 using Resonance
-omni, etoh, tps, complete_brain, metabolites, species = startup()
+omni, etoh, tps, metabolites, species = startup()
 
 mo3 = @subset tps begin
     .!ismissing.(:ageMonths)

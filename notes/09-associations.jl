@@ -9,8 +9,9 @@ using GLM
 using MixedModels
 using MultipleTesting
 using AlgebraOfGraphics
+using ThreadsX
 
-omni, etoh, tps, complete_brain, metabolites, species = startup()
+omni, etoh, tps, metabolites, species = startup()
 genes = Resonance.read_gfs_arrow()
 ecs = Resonance.read_gfs_arrow(kind="ecs_rename")
 ecs = filter(!hastaxon, ecs)
@@ -25,13 +26,10 @@ set!(ecs, leftjoin(select(omni, ["subject", "timepoint", "sample"]), tps, on=[:s
 set!(kos, leftjoin(select(omni, ["subject", "timepoint", "sample"]), tps, on=[:subject, :timepoint]))
 set!(metabolites, leftjoin(select(etoh, ["subject", "timepoint", "sample"]), tps, on=[:subject, :timepoint]))
 
-## 
 
-@chain DataFrame(subject=get(species, :subject), timepoint = get(species, :timepoint), age = get(species, :ageMonths)) begin
-    groupby(:subject)
-    combine(:age => (a-> all(ismissing, a) ? 0 : maximum(skipmissing(a))) => :maxage)
-    subset(:maxage => ByRow(a-> a > 24))
-end
+count(!ismissing, get(species, Symbol("Left-Thalamus")))
+
+## 
 
 met_pcoa = pcoa(metabolites)
 spec_pcoa = pcoa(species)
@@ -44,10 +42,14 @@ shannon!(kidsspecies)
 
 kids_pcoa = pcoa(kidsspecies)
 
+#-
+
 using Microbiome.Distances
 using MultivariateStats
 
-brain_dm = pairwise(Euclidean(), Matrix(tps[complete_brain, replace.(Resonance.brainmeta, "-"=>"_")]), dims=1)
+complete_brain = map(!ismissing, tps."Left-Thalamus")
+
+brain_dm = pairwise(Euclidean(), Matrix(tps[complete_brain, Resonance.brainmeta]), dims=1)
 brain_pcoa = fit(MDS, brain_dm, distances=true)
 
 ## 
@@ -170,7 +172,99 @@ fig
 
 ##
 
-srt_metab, srt_spec = stp_overlap(collect(zip(get(metabolites, :subject), get(metabolites, :timepoint))),
+isdir("figures/brainplots") || mkpath("figures/brainplots")
+
+for m in Resonance.brainmeta
+    fig = Figure(; resolution=(1200,1200))
+    ax1 = Axis(fig[1,1]; xlabel=string(m, ": relative"), ylabel="PCA1 ($(round(varexplained(brain_pcoa)[1] * 100, digits=2))%)")
+    ax2 = Axis(fig[1,2]; xlabel=string(m, ": absolute"), ylabel="PCA1 ($(round(varexplained(brain_pcoa)[1] * 100, digits=2))%)")
+
+    ax3 = Axis(fig[2,1]; xlabel=string(m, ": relative"), ylabel="Age (log(months))")
+    ax4 = Axis(fig[2,2]; xlabel=string(m, ": absolute"), ylabel="Age (log(months))")
+
+    scatter!(ax1, tps[complete_brain, m], Resonance.loadings(brain_pcoa)[:,1];
+        color = [x ? (:orangered, 1.) : (:dodgerblue, 0.2) for x in tps[complete_brain, "brain_outlier"]]
+    )
+    scatter!(ax2, tps[complete_brain, m] .* tps[complete_brain, "EstimatedTotalIntraCranialVol"], Resonance.loadings(brain_pcoa)[:,1];
+        color = [x ? (:orangered, 1.) : (:dodgerblue, 0.2) for x in tps[complete_brain, "brain_outlier"]]
+    )
+
+    scatter!(ax3, tps[complete_brain, m], log.(tps[complete_brain, "ageMonths"]);
+        color = [x ? (:orangered, 1.) : (:dodgerblue, 0.2) for x in tps[complete_brain, "brain_outlier"]]
+    )
+    scatter!(ax4, tps[complete_brain, m] .* tps[complete_brain, "EstimatedTotalIntraCranialVol"], log.(tps[complete_brain, "ageMonths"]);
+        color = [x ? (:orangered, 1.) : (:dodgerblue, 0.2) for x in tps[complete_brain, "brain_outlier"]]
+    )
+
+    Label(fig[0, :], m, textsize = 30)
+
+    save("figures/brainplots/$(m)_pca1_absrel.png", fig)
+    display(fig)
+end
+
+tps.brain_outlier = ThreadsX.map(eachrow(tps)) do row
+    ismissing(row.EstimatedTotalIntraCranialVol) && return false
+    return !(7.5e5 < row.EstimatedTotalIntraCranialVol < 2e6)
+end
+
+
+let m = "EstimatedTotalIntraCranialVol"
+    fig = Figure(; resolution=(1200,600))
+    ax1 = Axis(fig[1,1]; ylabel="$m ^ℯ", xlabel="PCA1 ($(round(varexplained(brain_pcoa)[1] * 100, digits=2))%)")
+    ax2 = Axis(fig[1,2]; ylabel="$m ^ℯ", xlabel="Age (months)")
+
+    scatter!(ax1, Resonance.loadings(brain_pcoa)[:,1], tps[complete_brain, m] .^ ℯ;
+        color = [x ? :orangered : :dodgerblue for x in tps[complete_brain, "brain_outlier"]])
+    scatter!(ax2, tps[complete_brain, "ageMonths"], tps[complete_brain, m] .^ ℯ;
+        color = [x ? :orangered : :dodgerblue for x in tps[complete_brain, "brain_outlier"]])
+
+    Legend(fig[2,1:2], 
+        [MarkerElement(; color=:dodgerblue, marker=:circle), MarkerElement(; color=:orangered, marker=:circle)],
+        ["No", "Yes"], "Outlier";
+        orientation = :horizontal, tellwidth = false, tellheight = true
+        )
+    save("figures/brainplots/$(m)_pca1_absrel.png", fig)
+    display(fig)
+end
+
+##
+
+brain_noo_dm = pairwise(Euclidean(), Matrix(tps[complete_brain .& .!tps.brain_outlier, Resonance.brainmeta]), dims=1)
+brain_noo_pcoa = fit(MDS, brain_noo_dm, distances=true)
+
+#-
+
+fig = Figure(resolution=(800, 800))
+ax1 = Axis(fig[1,1],
+            xlabel="PCA1 ($(round(varexplained(brain_noo_pcoa)[1] * 100, digits=2))%)",
+            ylabel="PCA2 ($(round(varexplained(brain_noo_pcoa)[2] * 100, digits=2))%)"
+)
+
+scatter!(ax1, Resonance.loadings(brain_noo_pcoa)[:,1], Resonance.loadings(brain_noo_pcoa)[:,2],
+         color = getcolors(tps[complete_brain .& .!tps.brain_outlier, :ageMonths] ./ 12, (0,10)),
+         strokewidth=0.5
+)
+cleg = Colorbar(fig[1, 2], limits=(0.1, 10), colormap=:plasma, highclip=:white, lowclip=:black, label="Age in Years")
+
+ax2 = Axis(fig[2,1],
+        xlabel="PCA1 ($(round(varexplained(brain_noo_pcoa)[1] * 100, digits=2))%)",
+        ylabel="Age in Years"
+)
+
+scatter!(ax2, Resonance.loadings(brain_noo_pcoa)[:,1], tps[complete_brain .& .!tps.brain_outlier, :ageMonths] ./ 12,
+        color = getcolors(tps[complete_brain .& .!tps.brain_outlier, :cogScore], (65,135), colormap=:viridis),
+        strokewidth=0.5
+)
+
+cleg = Colorbar(fig[2, 2], limits=(65, 135), colormap=:viridis, highclip=:white, lowclip=:black, label="Cognitive function score")
+
+save("figures/brain_noo_pcoa.png", fig)
+
+fig
+
+##
+
+lhsrt_metab, srt_spec = stp_overlap(collect(zip(get(metabolites, :subject), get(metabolites, :timepoint))),
                                   collect(zip(get(species, :subject), get(species, :timepoint)))
 )
 

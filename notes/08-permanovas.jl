@@ -2,7 +2,7 @@ using Resonance
 using CairoMakie
 
 
-omni, etoh, tps, complete_brain, metabolites, species = startup()
+omni, etoh, tps, metabolites, species = startup()
 genes = Resonance.read_gfs_arrow()
 ecs = Resonance.read_gfs_arrow(kind="ecs_rename")
 ecs = filter(!hastaxon, ecs)
