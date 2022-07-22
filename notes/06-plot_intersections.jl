@@ -1,9 +1,11 @@
 using Resonance
 omni, tps = startup(; dfs = [:omni, :tps])
 
+unique(tps, [:subject, :timepoint])
 subtpset = collect(zip(omni.subject, omni.timepoint))
 
 subj = @chain tps begin
+    subset(:ageMonths => ByRow(!ismissing))
     groupby(:subject)
     transform!(
         nrow => :n_timepoints,
@@ -32,8 +34,8 @@ using CairoMakie
 
 ##
 
-ys = ["scan",  "stool", "prev stool"]
-ycols = [:has_segmentation, :has_stool, :has_prevstool]
+ys = ["stool", "cogScore", "scan"]
+ycols = [:has_stool, :has_cogScore, :has_segmentation]
 
 fig = Figure()
 
@@ -43,22 +45,20 @@ set_ax = Axis(fig[2,3], xlabel="set size", xticklabelrotation=π/4,
                  xautolimitmargin = (0, 0.25),  xgridvisible = false)
 
 intersects = [
-    [1],        # 1. scan only    
-    [2],        # 2. stool only
-    [1,2],      # 3. scan & stool
-    [1,3],      # 4. scan & prior stool
-    [2,3],      # 5. stool & prior stool
-    # [2,4],      # 5. stool & future stool
-    [1,2,3],    # 5. scan & stool & prior stool
-    # [1,2,5],    # 6. scan & stool & bf
-    # [1,2,3,5]   # 7. scan & stool & prior stool && bf
+    [1],
+    [2],
+    [3],
+    [1,2],
+    [1,3],
+    [2,3],
+    [1,2,3],
 ]
 
-barplot!(intersection_ax, 1:length(intersects), [count_set(tps, ycols, i) for i in intersects],
+barplot!(intersection_ax, 1:length(intersects), [count_set(subset(tps, :ageMonths=>ByRow(!ismissing)), ycols, i) for i in intersects],
             bar_labels=:y, color = :gray20,
             label_size = 14, label_formatter = x -> string(Int(x)))
 
-barplot!(set_ax, 1:length(ys), [count(x-> !ismissing(x) && x, tps[!, col]) for col in ycols], 
+barplot!(set_ax, 1:length(ys), [count(x-> !ismissing(x) && x, subset(tps, :ageMonths=>ByRow(!ismissing))[!, col]) for col in ycols], 
             direction=:x, bar_labels=:y, label_size = 14, color = :gray20,
             label_formatter = x -> string(Int(x)))
 

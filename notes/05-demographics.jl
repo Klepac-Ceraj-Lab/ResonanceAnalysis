@@ -1,5 +1,70 @@
 using Resonance
-omni, tps = startup(; dfs = [:omni, :tps])
+omni, etoh, tps, complete_brain, metabolites, species = startup()
+
+#-
+
+
+unique!(tps, ["subject", "timepoint"])
+
+set!(species, leftjoin(select(omni, ["subject", "timepoint", "sample"]), tps, on=[:subject, :timepoint]))
+set!(metabolites, leftjoin(select(etoh, ["subject", "timepoint", "sample"]), tps, on=[:subject, :timepoint]))
+
+#-
+
+data_overlaps = DataFrame(subject = union(omni.subject, tps.subject))
+data_overlaps.stool = let
+    subjects = get(species, :subject)
+    map(data_overlaps.subject) do s
+        count(==(s), subjects)
+    end
+end
+
+data_overlaps.stool_kids = let
+    subjects = get(species, :subject)
+    kids = get(species, :Mother_Child) .== "C"
+    map(data_overlaps.subject) do s
+        count(==(s), subjects[kids])
+    end
+end
+
+data_overlaps.stool_moms = let
+    subjects = get(species, :subject)
+    moms = get(species, :Mother_Child) .== "M"
+    map(data_overlaps.subject) do s
+        count(==(s), subjects[moms])
+    end
+end
+
+data_overlaps.brains = let
+    gdf = groupby(tps, "subject")
+    map(data_overlaps.subject) do s
+        count(!ismissing, gdf[(;subject=s)]."Left_Thalamus")
+    end
+end
+
+data_overlaps.ages_months = let
+    gdf = groupby(tps, "subject")
+    map(data_overlaps.subject) do s
+        if all(ismissing, gdf[(;subject=s)]."ageMonths")
+            ()
+        else
+            Tuple(skipmissing(gdf[(;subject=s)]."ageMonths"))
+        end
+    end
+end
+
+data_overlaps.ages_stool = let
+    gdf = groupby(tps, "subject")
+    stps = collect(zip(get(species, :subject), get(species, :timepoint)))
+    map(data_overlaps.subject) do subject
+        g = gdf[(; subject)]
+        count(row-> (row.subject, row.timepoint) in stps, eachrow(g))
+    end
+end
+
+CSV.write(datafiles("sample_summaries.csv"), data_overlaps)
+
+#-
 
 using CairoMakie
 using AlgebraOfGraphics
