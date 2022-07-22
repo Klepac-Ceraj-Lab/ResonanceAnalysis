@@ -29,6 +29,8 @@
 
 using Resonance
 
+perform_airtable_write = false
+
 samplemeta = airtable_metadata() # having set ENV["AIRTABLE_KEY"]
 
 # Now to add important metadata to samples
@@ -200,28 +202,32 @@ CSV.write(datafiles("wrangled", "covid.csv"), fmp_covid)
 # Some data is useful to feed back up to airtable.
 # This requires an airtable API key that has write access.
 
-using Airtable
+if perform_airtable_write
 
-base = AirBase("appSWOVVdqAi5aT5u")
-tab = AirTable("Samples", base)
-joinedsamples = leftjoin(select(samplemeta, [:airtable_id, :subject, :timepoint, :sample, :childAgeMonths]), 
-                         select(fmp_alltp, [:subject, :timepoint, :ageMonths, :has_segmentation]), 
-                         on=[:subject, :timepoint]
-)
+    using Airtable
 
-agepatches = AirRecord[]
-brainpatches = AirRecord[]
-
-for row in eachrow(joinedsamples)
-    if !ismissing(row[:ageMonths]) && ismissing(row[:childAgeMonths])
-        push!(agepatches, AirRecord(row[:airtable_id], tab, (; childAgeMonths=row[:ageMonths])))
+    base = AirBase("appSWOVVdqAi5aT5u")
+    tab = AirTable("Samples", base)
+    joinedsamples = leftjoin(select(samplemeta, [:airtable_id, :subject, :timepoint, :sample, :childAgeMonths]), 
+                             select(fmp_alltp, [:subject, :timepoint, :ageMonths, :has_segmentation]), 
+                             on=[:subject, :timepoint]
+    )
+    
+    agepatches = AirRecord[]
+    brainpatches = AirRecord[]
+    
+    for row in eachrow(joinedsamples)
+        if !ismissing(row[:ageMonths]) && ismissing(row[:childAgeMonths])
+            push!(agepatches, AirRecord(row[:airtable_id], tab, (; childAgeMonths=row[:ageMonths])))
+        end
+        if coalesce(row[:has_segmentation], false)
+            push!(brainpatches, AirRecord(row[:airtable_id], tab, (; concurrent_scan=row[:has_segmentation])))
+        end
     end
-    if coalesce(row[:has_segmentation], false)
-        push!(brainpatches, AirRecord(row[:airtable_id], tab, (; concurrent_scan=row[:has_segmentation])))
-    end
+    
+    !isempty(agepatches) && Airtable.patch!(tab, agepatches)
+    
+    unique!(brainpatches)
+    !isempty(brainpatches) && Airtable.patch!(tab, brainpatches)
+
 end
-
-!isempty(agepatches) && Airtable.patch!(tab, agepatches)
-
-unique!(brainpatches)
-!isempty(brainpatches) && Airtable.patch!(tab, brainpatches)
