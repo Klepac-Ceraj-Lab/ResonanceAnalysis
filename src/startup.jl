@@ -14,6 +14,34 @@ const mainmeta = [
         "rce"
     ]
 
+const brainmeta_underscore = [
+    "Left_Thalamus",
+    "Left_Lateral_Ventricle",
+    "Left_Cerebellum_White_Matter",
+    "Left_Cerebellum_Cortex",
+    "Left_Caudate",
+    "Left_Putamen",
+    "Left_Pallidum",
+    "Left_Hippocampus",
+    "Left_Amygdala",
+    "Left_Accumbens_area",
+    "Left_VentralDC",
+    "Left_choroid_plexus",
+    "Right_Thalamus",
+    "Right_Lateral_Ventricle",
+    "Right_Cerebellum_White_Matter",
+    "Right_Cerebellum_Cortex",
+    "Right_Caudate",
+    "Right_Putamen",
+    "Right_Pallidum",
+    "Right_Hippocampus",
+    "Right_Amygdala",
+    "Right_Accumbens_area",
+    "Right_VentralDC",
+    "Right_choroid_plexus",
+    "Brain_Stem",
+    "CSF"
+]
     
 const brainmeta = [
             #  "CortexVol",
